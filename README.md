@@ -38,12 +38,12 @@ We hope to achieve a 2x speedup or greater on 4 processors to be on par with oth
 ### Showcase
 We plan on developing a live demo by hooking it up to the Lichess bot API for people to play against! This can also be used to evaluate the final ELO of the chess engine. 
 
-#@ Platform Choice
+## Platform Choice
 We will be using C as our programming language since many of the leading Chess engines are created in this language. We plan on using OpenMP because it allows us to split up work among cores easily using the fork-join model. 
 
 Finally, we will be running this program on regular laptops, such as Macbook Pro with 8 cores or the GHC computers, since we would like to host the Chess Engine locally. 
 
-#@ Schedule
+## Schedule
 | Week 1 11/12 - 11/18 | Submit the proposal and research topic                                                                       |
 |----------------------|--------------------------------------------------------------------------------------------------------------|
 | Week 2 11/19 - 11/25 | Build sequential implementation Perform timing and performance profiling                                     |
