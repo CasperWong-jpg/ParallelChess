@@ -49,3 +49,11 @@ Finally, we will be running this program on regular laptops, such as Macbook Pro
 | Week 3 11/26 - 12/2  | Develop a naive parallel implementation, Complete and submit milestone report                                |
 | Week 4 12/3 - 12/9   | Optimize parallel implementations – explore various OpenMP methods  Perform timing and performance profiling |
 | Week 5 12/10 - 12/14 | Complete final parallel implementation, Complete and submit the final report                                 |
+
+## How to run
+To run Lichess API:
+
+Change `lichess_bot/config.yml` OAuth token to bot account you own\
+`make lichess` \
+`cd lichess_bot` \
+`python3 lichess-bot.py`
