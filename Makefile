@@ -2,7 +2,7 @@ SOURCES := src/*.c
 HEADERS := src/*.h
 
 OUTPUTDIR := bin
-LICHESSDIR := lichess-bot/engines
+LICHESSDIR := lichess_bot/engines
 
 COMPILER := /usr/bin/clang
 CFLAGS := -std=c17
@@ -13,8 +13,7 @@ all: playable
 # Create shared object file that can be called by Python function
 lichess: $(SOURCES) $(HEADERS)
 	mkdir -p $(OUTPUTDIR)
-	$(COMPILER) -o $(OUTPUTDIR)/ChessEngine.so -fPIC -shared $(CFLAGS) $(SOURCES)
-	cp $(OUTPUTDIR)/ChessEngine.so $(LICHESSDIR)/ChessEngine.so
+	$(COMPILER) -o $(LICHESSDIR)/ChessEngine.so -fPIC -shared $(CFLAGS) $(SOURCES)
 
 # Create command line executable to simulate gameplay
 playable: $(SOURCES) $(HEADERS)
