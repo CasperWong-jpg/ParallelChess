@@ -11,7 +11,7 @@
 #include "dataStructs.h"
 
 /**
- * HELPER FUNCTION LOCAL TO THIS FILE. USE flipVertical() IN board_manipulation.h
+ * HELPER FUNCTION LOCAL TO THIS FILE. USE FLIP(sq) IN board_manipulation.h
  * Flip a bitboard vertically about the centre ranks. Rank 1 is mapped to rank 8 and vice versa.
  * @param x any bitboard
  * @return bitboard x flipped vertically

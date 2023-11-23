@@ -5,6 +5,10 @@
 #ifndef CHESS_BOARD_MANIPULATIONS_H
 #define CHESS_BOARD_MANIPULATIONS_H
 
+/**
+ * Macro function to vertically flip a square
+ */
+#define FLIP(sq) ((sq)^56)
 
 /**********************
  * BASIC BIT OPERATIONS

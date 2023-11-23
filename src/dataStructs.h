@@ -44,6 +44,7 @@ enum enumSquare {  // [0, 64)
     a6, b6, c6, d6, e6, f6, g6, h6,
     a7, b7, c7, d7, e7, f7, g7, h7,
     a8, b8, c8, d8, e8, f8, g8, h8,
+    totalSquares = 64
 };  // Ordered in same format as a FEN bitboard
 
 
@@ -105,5 +106,33 @@ struct generic_get_move_struct {
 };
 
 typedef struct generic_get_move_struct *generic_get_move;
+
+/**
+ * Evaluation heuristics using PeSTO – piece value and piece square tables
+ * See https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+ */
+const int mg_value[whiteAll];
+const int eg_value[whiteAll];
+const int gamePhaseInc[whiteAll];
+
+// The following piece square tables are built for black. Need to flip vertical for white
+const int mg_pawn_table[64];
+const int eg_pawn_table[64];
+const int mg_knight_table[64];
+const int eg_knight_table[64];
+const int mg_bishop_table[64];
+const int eg_bishop_table[64];
+const int mg_rook_table[64];
+const int eg_rook_table[64];
+const int mg_queen_table[64];
+const int eg_queen_table[64];
+const int mg_king_table[64];
+const int eg_king_table[64];
+const int* mg_pesto_table[whiteAll];
+const int* eg_pesto_table[whiteAll];
+
+// These need to be initialized in main program
+int mg_table[numPieceTypes][64];
+int eg_table[numPieceTypes][64];
 
 #endif //CHESS_DATASTRUCTS_H

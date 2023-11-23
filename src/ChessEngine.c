@@ -7,7 +7,7 @@
  *       Use a list of struct to store what functions each piece uses and loop thru function pointers
  *       King and Pawn take additional arguments
  *       Comment code :)
- *  4. TODO: (Optional) Castling (take tokens as arguments) + en passant
+ *  4. TODO: Castling (FEN tokens) + en passant (FEN tokens) + promotions
  *  5. DONE! Do legality checks (tryMove & isInCheck)
  *  6. Done! MiniMax!! TODO: Alpha-beta pruning!
  *  7. TODO: Better heuristics (ie. good board position)
@@ -32,16 +32,52 @@
  * GENERIC AI HELPERS
 *********************/
 /**
+ * Initialize midgame and endgame eval tables. Add piece value to piece location tables
+ */
+void initEvalTables(void) {
+    for (enum EPieceType piece = 0; piece < whiteAll; piece++) {
+        for (enum enumSquare sq = a1; sq < totalSquares; sq++) {
+            // Tables initialized for black position already
+            mg_table[piece + colorOffset][sq] = mg_value[piece] + mg_pesto_table[piece][sq];
+            eg_table[piece + colorOffset][sq] = eg_value[piece] + eg_pesto_table[piece][sq];
+
+            // Tables need to be flipped vertically for white position
+            mg_table[piece][sq] = mg_value[piece] + mg_pesto_table[piece][FLIP(sq)];
+            eg_table[piece][sq] = eg_value[piece] + eg_pesto_table[piece][FLIP(sq)];
+        }
+    }
+}
+
+
+/**
  * Evaluates material balance of position boards
  * @return Sum(weighting * (playingColorCount - waitingColorCount)) ie. +ve means advantage for playing team
+ * @cite https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
  */
 int evaluateMaterial(uint64_t *BBoard, bool whiteToMove) {
-    int score = 0;
-    int values[] = {100, 300, 300, 500, 900, 20000};  // p, n, b, r, q, k
-    for (enum EPieceType i = 0; i < whiteAll; i++) {
-        int count = popCount(BBoard[i]) - popCount(BBoard[i + colorOffset]);
-        score += values[i] * count;
+    int mgScore = 0;  // Middle game score
+    int egScore = 0;  // End game score
+    int gamePhase = 0;
+    for (enum EPieceType piece = 0; piece < whiteAll; piece++) {
+        for (enum EPieceType color = 0; color < numPieceTypes; color += colorOffset) {
+            uint64_t board = BBoard[piece + color];
+            while (board) {
+                enum enumSquare sq = bitScanForward(board);
+                // Add piece value and piece location to score. Black pieces -ve
+                mgScore = !color ? mgScore + mg_table[piece][sq] : mgScore - mg_table[piece + color][sq];
+                egScore = !color ? egScore + mg_table[piece][sq] : egScore - mg_table[piece + color][sq];
+                // Update game phase
+                gamePhase += gamePhaseInc[piece];
+                board &= board - 1;
+            }
+        }
     }
+    // tapered eval
+    int mgPhase = gamePhase > 24 ? 24: gamePhase;
+    int egPhase = 24 - mgPhase;
+    int score = (mgScore * mgPhase + egScore * egPhase) / 24;
+
+    // Change score depending on team color's move
     if (!whiteToMove) score *= -1;
     return score;
 }
@@ -479,6 +515,8 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
  * @return move, a pointer to a move_info struct
  */
 move AIMove(FEN tokens, move bestMove) {
+    initEvalTables();
+
     // Generate all possible legal moves
     uint64_t *BBoard = tokens->BBoard;
     bool whiteToMove = tokens->whiteToMove;
@@ -499,9 +537,6 @@ move AIMove(FEN tokens, move bestMove) {
     for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
         // Make move, evaluate it, (and unmake move if necessary)
         move m = (move) move_node->data;
-        if (m->from == e4 && m->to == d5) {
-            printf("This should be money move\n");
-        }
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
         int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1);
