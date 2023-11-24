@@ -95,7 +95,6 @@ class C_Engine(ExampleEngine):
     """C engine: uses minimax with depth 4"""
 
     def search(self, board, *args):
-        print("Thinking")
         so_file = sys.path[0] + "/engines/ChessEngine.so"
         ChessEngine = ctypes.CDLL(so_file)
         ChessEngine.lichess.restype = ctypes.c_char_p

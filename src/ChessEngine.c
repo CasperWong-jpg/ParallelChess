@@ -60,7 +60,7 @@ int evaluateMaterial(uint64_t *BBoard, bool whiteToMove) {
                 enum enumSquare sq = bitScanForward(board);
                 // Add piece value and piece location to score. Black pieces -ve
                 mgScore = !color ? mgScore + mg_table[piece][sq] : mgScore - mg_table[piece + color][sq];
-                egScore = !color ? egScore + mg_table[piece][sq] : egScore - mg_table[piece + color][sq];
+                egScore = !color ? egScore + eg_table[piece][sq] : egScore - eg_table[piece + color][sq];
                 // Update game phase
                 gamePhase += gamePhaseInc[piece];
                 board &= board - 1;
@@ -191,6 +191,7 @@ uint64_t generateKnightMoves(enum enumSquare knight_index, uint64_t *BBoard, boo
 uint64_t generateKingMoves(enum enumSquare king_index, uint64_t *BBoard, bool whiteToMove, uint64_t castling) {
     (void) castling;
     // todo: Castling in another function?
+
     uint64_t friendlyBoard = BBoard[whiteAll + !whiteToMove * colorOffset];
     uint64_t king = 1UL << king_index;
     uint64_t l1 = (king >> 1) & not_h_file;
@@ -463,11 +464,15 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
  * @return
  */
 int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta) {
+    // Get a "stand pat" score - need to stop searching without necessarily searching all available captures
     int stand_pat = evaluateMaterial(BBoard, whiteToMove);
-    if (stand_pat >= beta) return beta;
-    if (depth == 0) return stand_pat;
-    if (alpha < stand_pat) alpha = stand_pat;
 
+    // Pruning / early exit conditions
+    if (depth == 0) return stand_pat;  // Hit a depth of 0
+    if (stand_pat >= beta) return beta;  // Stand pat score causes beta cutoff
+    if (stand_pat > alpha) alpha = stand_pat;  // Current position is better than what we have encontered
+
+    // Generate all enemy moves
     uint64_t enemyBoard = BBoard[whiteAll + colorOffset * whiteToMove];
     node move_list = getMoves(BBoard, whiteToMove, castling, enPassant);
     uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
@@ -477,7 +482,7 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
             // We only further evaluate captures
             memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
             make_move(tmpBBoard, m);
-            int currScore = -quiesce(tmpBBoard, !whiteToMove, castling, enPassant, depth - 1, -beta, -alpha);
+            int currScore = -quiesce(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha);
 
             if (currScore >= beta) {
                 alpha = beta;  // Return beta
@@ -635,7 +640,7 @@ int main(void) {
 
     // Input FEN String
     char *board_fen = malloc(sizeof(char) * 100);
-    strcpy(board_fen, "r2qkb1r/ppp1pppp/2n2n2/3P4/2p1P1b1/2N2NP1/PP3P1P/R1BQKB1R b KQkq - 0 7");  /// Input a FEN_string here!
+    strcpy(board_fen, "8/k4R2/1p6/8/P3N1p1/5n2/1K6/8 b - - 0 1");  /// Input a FEN_string here!
 
     // Extract info from FEN string
     FEN tokens = extract_fen_tokens(board_fen);

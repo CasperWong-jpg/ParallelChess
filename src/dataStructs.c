@@ -19,7 +19,7 @@ const int LS1Bindex64[64] = {
 
 const int mg_value[6] = { 82, 337, 365, 477, 1025,  20000};
 const int eg_value[6] = { 94, 281, 297, 512,  936,  20000};
-const int gamePhaseInc[6] = { 0, 1, 1, 2, 4, 24};
+const int gamePhaseInc[6] = { 0, 1, 1, 2, 4, 0};
 
 const int mg_pawn_table[64] = {
         0,   0,   0,   0,   0,   0,  0,   0,
