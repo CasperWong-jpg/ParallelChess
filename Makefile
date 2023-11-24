@@ -6,7 +6,7 @@ LICHESSDIR := lichess_bot/engines
 
 COMPILER := /usr/bin/clang
 CFLAGS := -std=c17
-DEBUGFLAGS := -Wall -Wextra -Werror -Wshadow -std=c99 -pedantic -g -fwrapv -DDEBUG=0
+DEBUGFLAGS := -Wall -Wextra -Werror -Wshadow -std=c99 -pedantic -g -fwrapv
 
 all: playable
 

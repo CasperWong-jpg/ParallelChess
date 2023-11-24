@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "dataStructs.h"
+#include "dev_tools.h"
 #include "lib/contracts.h"
 
 /**********************
@@ -100,7 +101,7 @@ void make_move(uint64_t *BBoard, move m) {
     ASSERT(color_board & from_bit);  // from index should be occupied
     ASSERT(!(color_board & to_bit));  // to index should be empty
     color_board = color_board - from_bit + to_bit;
-    BBoard[whiteAll + 7 * (m->piece / 7)] = color_board;
+    BBoard[whiteAll + colorOffset * (m->piece / colorOffset)] = color_board;
 
     // Check all enemy boards and capture if relevant
     for (enum EPieceType i = 0; i < colorOffset; i++) {

@@ -9,13 +9,14 @@
  *       Comment code :)
  *  4. TODO: Castling (FEN tokens) + en passant (FEN tokens) + promotions
  *  5. DONE! Do legality checks (tryMove & isInCheck)
- *  6. Done! MiniMax!! TODO: Alpha-beta pruning!
- *  7. TODO: Better heuristics (ie. good board position)
+ *  6. Done! NegaMax with Alpha-beta pruning!
+ *  7. Done! Better heuristics (ie. good board position)
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <time.h>
 
 #include "lib/contracts.h"
 #include "dataStructs.h"
@@ -26,6 +27,9 @@
 #define DEBUG (0)  // Debug is off by default
 #endif
 
+#ifndef QUIESCE
+#define QUIESCE (0)
+#endif
 #define DEPTH (4)  // Number of moves to think ahead
 
 /********************
@@ -53,6 +57,7 @@ void initEvalTables(void) {
  * Evaluates material balance of position boards
  * @return Sum(weighting * (playingColorCount - waitingColorCount)) ie. +ve means advantage for playing team
  * @cite https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+ * @cite https://www.chessprogramming.org/Simplified_Evaluation_Function
  */
 int evaluateMaterial(uint64_t *BBoard, bool whiteToMove) {
     int mgScore = 0;  // Middle game score
@@ -214,8 +219,7 @@ uint64_t wSinglePushTargets(uint64_t wpawns, uint64_t empty) {
 }
 
 uint64_t wDoublePushTargets(uint64_t wpawns, uint64_t empty) {
-    const uint64_t rank4 = 0x00000000FF000000;
-    uint64_t singlePushes = wSinglePushTargets(wpawns, empty);
+    const uint64_t rank4 = 0x00000000FF000000;int64_t singlePushes = wSinglePushTargets(wpawns, empty);
     return (singlePushes << 8) & empty & rank4;
 }
 
@@ -417,10 +421,6 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
     for (node piece_node = piece_list; piece_node != NULL; piece_node = piece_node->next) {
         generic_get_move piece = (generic_get_move) piece_node->data;
         uint64_t pieceBoard = BBoard[piece->pieceType];
-#if DEBUG
-        printf("Piece board for piece type %d - ", piece->pieceType);
-        render_single(pieceBoard);
-#endif
         while (pieceBoard) {
             // For each piece, generate all pseudo-legal moves
             enum enumSquare piece_index = bitScanForward(pieceBoard);
@@ -433,10 +433,6 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
             else {  // Normal pieces have normal function signature without additional uint64_t argument
                 pieceMoves = (piece->move_gen_func_ptr.normal)(piece_index, BBoard, whiteToMove);
             }
-#if DEBUG
-            printf("Piece moves - ");
-            render_single(pieceMoves);
-#endif
             while (pieceMoves) {
                 // For each move, check if legal
                 enum enumSquare piece_move = bitScanForward(pieceMoves);
@@ -458,10 +454,6 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
                     move_list->next = NULL;
                 }
                 else {
-                    // Illegal move: disregard it
-#if DEBUG
-                    printf("%d to %d is not a legal move\n", m->from, m->to);
-#endif
                     free(m);
                 }
                 pieceMoves &= pieceMoves - 1;
@@ -475,36 +467,82 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
 
 
 /**
- *
- * @param depth
+ * Search performed at the end of a main search to only evaluate "quiet" positions.
+ * This is performed to avoid the horizon effect (ie. an imminent capture that was just out of our depth)
+ * @param BBoard
  * @return
+ */
+int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, int alpha, int beta) {
+    int stand_pat = evaluateMaterial(BBoard, whiteToMove);
+    if (stand_pat >= beta) return beta;
+    if (alpha < stand_pat) alpha = stand_pat;
+
+    uint64_t enemyBoard = BBoard[whiteAll + colorOffset * whiteToMove];
+    node move_list = getMoves(BBoard, whiteToMove, castling, enPassant);
+    uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
+    for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
+        move m = (move) move_node->data;
+        if (((1UL << m->to) & enemyBoard) != 0) {
+            // We only further evaluate captures
+            memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
+            make_move(tmpBBoard, m);
+            int currScore = -quiesce(tmpBBoard, !whiteToMove, castling, enPassant, -beta, -alpha);
+
+            if (currScore >= beta) {
+                alpha = beta;  // Return beta
+                break;
+            }
+            if (currScore > alpha) {
+                alpha = currScore;
+            }
+        }
+    }
+    free(tmpBBoard);
+    free_linked_list(move_list);
+    return alpha;
+}
+
+
+/**
+ * Variant of minimax algorithm, which is used to determine score after a certain number of moves.
+ * Each side is trying to make the best move they can possibly make (by maximizing their score)
+ * @param depth
+ * @return Best score
  * @cite https://www.chessprogramming.org/Negamax
  */
-int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth) {
+int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta) {
     if (depth == 0) {
+        // Quiesce considers horizon effect, but sacrifices time for more depth
+#if QUIESCE
+        int score = quiesce(BBoard, whiteToMove, castling, enPassant, alpha, beta);
+#else
         int score = evaluateMaterial(BBoard, whiteToMove);
+#endif
         return score;
     }
 
     node move_list = getMoves(BBoard, whiteToMove, castling, enPassant);
-    int bestScore = INT_MIN;
     uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
     for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
         // Make move, evaluate it, (and unmake move if necessary)
         move m = (move) move_node->data;
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
-        int currScore = -1 * negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1);
+        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha);
 
         // If this is the best move, then return this score
-        if (currScore > bestScore) {
-            bestScore = currScore;
+        if (currScore >= beta) {
+            alpha = beta;  // Return beta
+            break;
+        }
+        if (currScore > alpha) {
+            alpha = currScore;
         }
     }
 
     free(tmpBBoard);
     free_linked_list(move_list);
-    return bestScore;
+    return alpha;
 }
 
 
@@ -515,8 +553,6 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
  * @return move, a pointer to a move_info struct
  */
 move AIMove(FEN tokens, move bestMove) {
-    initEvalTables();
-
     // Generate all possible legal moves
     uint64_t *BBoard = tokens->BBoard;
     bool whiteToMove = tokens->whiteToMove;
@@ -532,14 +568,17 @@ move AIMove(FEN tokens, move bestMove) {
     // AIMove serves as a root negaMax, which returns the best move instead of score
     int depth = DEPTH;
     ASSERT(depth > 0);
-    int bestScore = INT_MIN;
+    int bestScore = INT_MIN + 1;
     uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
     for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
         // Make move, evaluate it, (and unmake move if necessary)
         move m = (move) move_node->data;
+        if (m->to == a8) {
+            depth=1;
+        }
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
-        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1);
+        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, INT_MIN+1, INT_MAX);
 
         // If this is the best move, then store it
         if (currScore > bestScore) {
@@ -561,6 +600,9 @@ move AIMove(FEN tokens, move bestMove) {
  * @return An exit code (0 = successful exit)
  */
 char *lichess(char *board_fen, char *moveString) {
+    // Initialize data tables
+    initEvalTables();
+
     // Extract info from FEN string
     FEN tokens = extract_fen_tokens(board_fen);
 
@@ -570,11 +612,15 @@ char *lichess(char *board_fen, char *moveString) {
 
     printf("Before AI move - ");
     render_all(tokens->BBoard);
+    int score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
+    printf("Score: %d \n", score);
 
     make_move(tokens->BBoard, bestMove);
 
     printf("After AI move - ");
     render_all(tokens->BBoard);
+    score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
+    printf("Score: %d \n", score);
 
     enumSquare_to_string(moveString, bestMove->from);
     enumSquare_to_string(&moveString[2], bestMove->to);
@@ -592,33 +638,33 @@ char *lichess(char *board_fen, char *moveString) {
  * @return An exit code (0 = successful exit)
  */
 int main(void) {
-#if DEBUG
-    printf("Debugging mode is on!\n");
-#endif
+    // Initialize data tables
+    initEvalTables();
+
     // Input FEN String
     char *board_fen = malloc(sizeof(char) * 100);
-    strcpy(board_fen, "rnbqkbnr/ppN2ppp/4p3/3p4/3P1B2/8/PPP1PPPP/R2QKBNR b KQkq - 0 1");  /// Input a FEN_string here!
+    strcpy(board_fen, "2rqkr2/pppnbppp/4b3/nP1pP3/3P4/P1NB1N1P/5PP1/R1BQ1RK1 b - - 2 14");  /// Input a FEN_string here!
 
     // Extract info from FEN string
     FEN tokens = extract_fen_tokens(board_fen);
 
-#if DEBUG
+    /// Do AI stuff here;
+    printf("Before AI move - ");
     render_all(tokens->BBoard);
     int score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
     printf("Score: %d \n", score);
-#endif
 
-    /// Do AI stuff here;
+    time_t start = clock();
     move bestMove = calloc(1, sizeof(struct move_info));
     AIMove(tokens, bestMove);
-
-    printf("Before AI move - ");
-    render_all(tokens->BBoard);
+    printf("Time elapsed: %f \n", (double) (clock() - start) / CLOCKS_PER_SEC);
 
     make_move(tokens->BBoard, bestMove);
 
     printf("After AI move - ");
     render_all(tokens->BBoard);
+    score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
+    printf("Score: %d \n", score);
 
     // Free pointers
     free(bestMove);
