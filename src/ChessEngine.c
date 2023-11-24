@@ -635,7 +635,7 @@ int main(void) {
 
     // Input FEN String
     char *board_fen = malloc(sizeof(char) * 100);
-    strcpy(board_fen, "8/1b4Q1/1kp3N1/1p1pp3/1Pn1P3/2P2qPP/3R1P2/r3KR2 w - - 7 48");  /// Input a FEN_string here!
+    strcpy(board_fen, "r2qkb1r/ppp1pppp/2n2n2/3P4/2p1P1b1/2N2NP1/PP3P1P/R1BQKB1R b KQkq - 0 7");  /// Input a FEN_string here!
 
     // Extract info from FEN string
     FEN tokens = extract_fen_tokens(board_fen);
@@ -649,7 +649,7 @@ int main(void) {
     time_t start = clock();
     move bestMove = calloc(1, sizeof(struct move_info));
     AIMove(tokens, bestMove);
-    printf("Time elapsed: %f \n", (double) (clock() - start) / CLOCKS_PER_SEC);
+    time_t finish = clock();
 
     make_move(tokens->BBoard, bestMove);
 
@@ -657,6 +657,7 @@ int main(void) {
     render_all(tokens->BBoard);
     score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
     printf("Score: %d \n", score);
+    printf("Time elapsed: %f \n", (double) (finish - start) / CLOCKS_PER_SEC);
 
     // Free pointers
     free(bestMove);
