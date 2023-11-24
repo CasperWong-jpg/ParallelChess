@@ -89,12 +89,20 @@ void make_move(uint64_t *BBoard, move m) {
     int whiteToMove = !(m->piece / colorOffset);
     uint64_t from_bit = (1UL << m->from);
     uint64_t to_bit = (1UL << m->to);
+
     // Change the board containing specific piece
-    uint64_t piece_board = BBoard[m->piece];
-    ASSERT(piece_board & from_bit);  // from index should be occupied
-    ASSERT(!(piece_board & to_bit));  // to index should be empty
-    piece_board = piece_board - from_bit + to_bit;
-    BBoard[m->piece] = piece_board;
+    ASSERT(BBoard[m->piece] & from_bit);  // from index should be occupied
+    ASSERT(!(BBoard[m->piece] & to_bit));  // to index should be empty
+    BBoard[m->piece] &= ~from_bit;
+    if ((m->piece == whitePawns) && (to_bit & rankMask(a8))) {  // White pawn promotion!
+        BBoard[whiteQueens] |= to_bit;
+    }
+    else if ((m->piece == blackPawns) && (to_bit & rankMask(a1))) {  // Black pawn promotion!
+        BBoard[blackQueens] |= to_bit;
+    }
+    else {  // Normal move
+        BBoard[m->piece] |= to_bit;
+    }
 
     // Change the board containing specific color
     uint64_t color_board = BBoard[whiteAll + colorOffset * !whiteToMove];
@@ -106,9 +114,7 @@ void make_move(uint64_t *BBoard, move m) {
     // Check all enemy boards and capture if relevant
     for (enum EPieceType i = 0; i < colorOffset; i++) {
         // If whiteToMove == 1, then loop through black pieces [7, 14)
-        uint64_t board = BBoard[i + colorOffset * whiteToMove];
-        board = board & ~to_bit;
-        BBoard[i + colorOffset * whiteToMove] = board;
+        BBoard[i + colorOffset * whiteToMove] &= ~to_bit;
     }
 }
 

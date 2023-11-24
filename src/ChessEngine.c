@@ -7,9 +7,9 @@
  *       Use a list of struct to store what functions each piece uses and loop thru function pointers
  *       King and Pawn take additional arguments
  *       Comment code :)
- *  4. TODO: Castling (FEN tokens) + en passant (FEN tokens) + promotions
+ *  4. TODO: Castling (FEN tokens) + en passant (FEN tokens)
  *  5. DONE! Do legality checks (tryMove & isInCheck)
- *  6. Done! NegaMax with Alpha-beta pruning!
+ *  6. Done! NegaMax with Alpha-beta pruning! TODO: Optimize and add quiescence Search
  *  7. Done! Better heuristics (ie. good board position)
  */
 #include <stdio.h>
@@ -643,7 +643,7 @@ int main(void) {
 
     // Input FEN String
     char *board_fen = malloc(sizeof(char) * 100);
-    strcpy(board_fen, "2rqkr2/pppnbppp/4b3/nP1pP3/3P4/P1NB1N1P/5PP1/R1BQ1RK1 b - - 2 14");  /// Input a FEN_string here!
+    strcpy(board_fen, "2k5/P7/8/4r3/5P2/8/8/3K4 w - - 0 1");  /// Input a FEN_string here!
 
     // Extract info from FEN string
     FEN tokens = extract_fen_tokens(board_fen);
