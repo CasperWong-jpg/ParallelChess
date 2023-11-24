@@ -69,8 +69,7 @@ uint64_t southEastRay(enum enumSquare sq);
  * @param BBoard
  * @param m
  * @return Nothing. BBoard will be changed
- * TODO: Implement unmake move instead of using memcpy to improve performance
- *   make_move will need to return captured piece type to restore again
+ * From profiling performance, creating copy of bitboard is just as fast as unmaking move
  */
 void make_move(uint64_t *BBoard, move m);
 

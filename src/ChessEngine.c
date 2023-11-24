@@ -1,16 +1,6 @@
 /**
- *  0. Learn how to use debugger (set up cmakefile and config)
- *  1. DONE! Create pseudo-legal move generation for all piece types
- *  2. DONE! Complete pseudo-legal checks for sliding pieces (ie. blocking) within move generation
- *  2.5. DONE! Do pseudo-legal checks within move generation for non-sliding pieces
- *  3. DONE! Refactor: each of the getMoves_**** can be condensed into one
- *       Use a list of struct to store what functions each piece uses and loop thru function pointers
- *       King and Pawn take additional arguments
- *       Comment code :)
- *  4. TODO: Castling (FEN tokens) + en passant (FEN tokens)
- *  5. DONE! Do legality checks (tryMove & isInCheck)
- *  6. Done! NegaMax with Alpha-beta pruning! TODO: Optimize and add quiescence Search
- *  7. Done! Better heuristics (ie. good board position)
+ *  TODO: Add Castling (FEN tokens) + en passant (FEN tokens)
+ *  Optimization: Move ordering
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,9 +18,9 @@
 #endif
 
 #ifndef QUIESCE
-#define QUIESCE (0)
+#define QUIESCE (1)
 #endif
-#define DEPTH (4)  // Number of moves to think ahead
+#define DEPTH (3)  // Number of moves to think ahead
 
 /********************
  * GENERIC AI HELPERS
@@ -472,9 +462,10 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
  * @param BBoard
  * @return
  */
-int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, int alpha, int beta) {
+int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta) {
     int stand_pat = evaluateMaterial(BBoard, whiteToMove);
     if (stand_pat >= beta) return beta;
+    if (depth == 0) return stand_pat;
     if (alpha < stand_pat) alpha = stand_pat;
 
     uint64_t enemyBoard = BBoard[whiteAll + colorOffset * whiteToMove];
@@ -486,7 +477,7 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
             // We only further evaluate captures
             memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
             make_move(tmpBBoard, m);
-            int currScore = -quiesce(tmpBBoard, !whiteToMove, castling, enPassant, -beta, -alpha);
+            int currScore = -quiesce(tmpBBoard, !whiteToMove, castling, enPassant, depth - 1, -beta, -alpha);
 
             if (currScore >= beta) {
                 alpha = beta;  // Return beta
@@ -514,7 +505,7 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
     if (depth == 0) {
         // Quiesce considers horizon effect, but sacrifices time for more depth
 #if QUIESCE
-        int score = quiesce(BBoard, whiteToMove, castling, enPassant, alpha, beta);
+        int score = quiesce(BBoard, whiteToMove, castling, enPassant, 3, alpha, beta);
 #else
         int score = evaluateMaterial(BBoard, whiteToMove);
 #endif
@@ -522,6 +513,10 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
     }
 
     node move_list = getMoves(BBoard, whiteToMove, castling, enPassant);
+    if (move_list == NULL) {  // Checkmate. No possible moves
+        free_linked_list(move_list);
+        return INT_MIN + 2;  // Default worst case is INT_MIN+1. This is still a move, which is better than nothing
+    }
     uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
     for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
         // Make move, evaluate it, (and unmake move if necessary)
@@ -573,9 +568,6 @@ move AIMove(FEN tokens, move bestMove) {
     for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
         // Make move, evaluate it, (and unmake move if necessary)
         move m = (move) move_node->data;
-        if (m->to == a8) {
-            depth=1;
-        }
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
         int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, INT_MIN+1, INT_MAX);
@@ -643,7 +635,7 @@ int main(void) {
 
     // Input FEN String
     char *board_fen = malloc(sizeof(char) * 100);
-    strcpy(board_fen, "2k5/P7/8/4r3/5P2/8/8/3K4 w - - 0 1");  /// Input a FEN_string here!
+    strcpy(board_fen, "8/1b4Q1/1kp3N1/1p1pp3/1Pn1P3/2P2qPP/3R1P2/r3KR2 w - - 7 48");  /// Input a FEN_string here!
 
     // Extract info from FEN string
     FEN tokens = extract_fen_tokens(board_fen);
