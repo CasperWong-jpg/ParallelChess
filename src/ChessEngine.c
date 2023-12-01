@@ -470,7 +470,9 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
  * @param BBoard
  * @return
  */
-int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta) {
+int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, int* nodes) {
+    (*nodes)++;
+
     // Get a "stand pat" score - need to stop searching without necessarily searching all available captures
     int stand_pat = evaluateMaterial(BBoard, whiteToMove);
 
@@ -489,7 +491,7 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
             // We only further evaluate captures
             memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
             make_move(tmpBBoard, m);
-            int currScore = -quiesce(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha);
+            int currScore = -quiesce(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha, nodes);
 
             if (currScore >= beta) {
                 alpha = beta;  // Return beta
@@ -514,10 +516,12 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
  * @cite https://www.chessprogramming.org/Negamax
  */
 int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, int* nodes) {
+    (*nodes)++;
+
     if (depth == 0) {
         // Quiesce considers horizon effect, but sacrifices time for more depth
 #if QUIESCE
-        int score = quiesce(BBoard, whiteToMove, castling, enPassant, 3, alpha, beta);
+        int score = quiesce(BBoard, whiteToMove, castling, enPassant, 3, alpha, beta, nodes);
 #else
         int score = evaluateMaterial(BBoard, whiteToMove);
 #endif
@@ -532,7 +536,6 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
     uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
     for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
         // Make move, evaluate it, (and unmake move if necessary)
-        (*nodes)++;
         move m = (move) move_node->data;
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
