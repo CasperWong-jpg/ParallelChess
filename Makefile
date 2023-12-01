@@ -22,3 +22,4 @@ playable: $(SOURCES) $(HEADERS)
 
 clean:
 	rm -rf $(OUTPUTDIR)
+	rm -f $(LICHESSDIR)/ChessEngine.so
