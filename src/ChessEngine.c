@@ -513,7 +513,7 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
  * @return Best score
  * @cite https://www.chessprogramming.org/Negamax
  */
-int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta) {
+int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, int* nodes) {
     if (depth == 0) {
         // Quiesce considers horizon effect, but sacrifices time for more depth
 #if QUIESCE
@@ -532,10 +532,11 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
     uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
     for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
         // Make move, evaluate it, (and unmake move if necessary)
+        (*nodes)++;
         move m = (move) move_node->data;
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
-        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha);
+        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha, nodes);
 
         // If this is the best move, then return this score
         if (currScore >= beta) {
@@ -559,7 +560,7 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
  * @param bestMove Pointer to the best move
  * @return move, a pointer to a move_info struct
  */
-move AIMove(FEN tokens, move bestMove) {
+move AIMove(FEN tokens, move bestMove, int* nodes) {
     // Generate all possible legal moves
     uint64_t *BBoard = tokens->BBoard;
     bool whiteToMove = tokens->whiteToMove;
@@ -582,7 +583,7 @@ move AIMove(FEN tokens, move bestMove) {
         move m = (move) move_node->data;
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
-        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, INT_MIN+1, INT_MAX);
+        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, INT_MIN+1, INT_MAX, nodes);
 
         // If this is the best move, then store it
         if (currScore > bestScore) {
@@ -613,7 +614,8 @@ char *lichess(char *board_fen, char *move_string) {
     /// Do AI stuff here
     move bestMove = calloc(1, sizeof(struct move_info));
     time_t start = clock();
-    AIMove(tokens, bestMove);
+    int nodesVisited = 0;
+    AIMove(tokens, bestMove, &nodesVisited);
     time_t finish = clock();
 
     printf("Before AI move - ");
@@ -628,6 +630,7 @@ char *lichess(char *board_fen, char *move_string) {
     score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
     printf("Score: %d \n", score);
     printf("Time elapsed: %f \n", (double) (finish - start) / CLOCKS_PER_SEC);
+    printf("Nodes visited: %d \n", nodesVisited);
 
     enumSquare_to_string(move_string, bestMove->from);
     enumSquare_to_string(&move_string[2], bestMove->to);

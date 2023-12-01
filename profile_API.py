@@ -1,6 +1,5 @@
 import sys
 import ctypes
-import pandas
 
 so_file = sys.path[0] + "/lichess_bot/engines/ChessEngine.so"
 ChessEngine = ctypes.CDLL(so_file)
