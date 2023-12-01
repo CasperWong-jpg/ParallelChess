@@ -7,6 +7,7 @@
 #include <string.h>
 #include <limits.h>
 #include <time.h>
+#include <stdatomic.h>
 
 #include "lib/contracts.h"
 #include "dataStructs.h"
@@ -17,9 +18,7 @@
 #define DEBUG (0)  // Debug is off by default
 #endif
 
-#ifndef QUIESCE
 #define QUIESCE (1)
-#endif
 #define DEPTH (3)  // Number of moves to think ahead
 
 /********************
@@ -470,8 +469,8 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
  * @param BBoard
  * @return
  */
-int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, int* nodes) {
-    (*nodes)++;
+int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, atomic_int* nodesVisited) {
+    (*nodesVisited)++;
 
     // Get a "stand pat" score - need to stop searching without necessarily searching all available captures
     int stand_pat = evaluateMaterial(BBoard, whiteToMove);
@@ -491,7 +490,7 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
             // We only further evaluate captures
             memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
             make_move(tmpBBoard, m);
-            int currScore = -quiesce(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha, nodes);
+            int currScore = -quiesce(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha, nodesVisited);
 
             if (currScore >= beta) {
                 alpha = beta;  // Return beta
@@ -515,13 +514,13 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
  * @return Best score
  * @cite https://www.chessprogramming.org/Negamax
  */
-int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, int* nodes) {
-    (*nodes)++;
+int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, atomic_int* nodesVisited) {
+    (*nodesVisited)++;
 
     if (depth == 0) {
         // Quiesce considers horizon effect, but sacrifices time for more depth
 #if QUIESCE
-        int score = quiesce(BBoard, whiteToMove, castling, enPassant, 3, alpha, beta, nodes);
+        int score = quiesce(BBoard, whiteToMove, castling, enPassant, 3, alpha, beta, nodesVisited);
 #else
         int score = evaluateMaterial(BBoard, whiteToMove);
 #endif
@@ -539,7 +538,7 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
         move m = (move) move_node->data;
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
-        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha, nodes);
+        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha, nodesVisited);
 
         // If this is the best move, then return this score
         if (currScore >= beta) {
@@ -563,7 +562,7 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
  * @param bestMove Pointer to the best move
  * @return move, a pointer to a move_info struct
  */
-move AIMove(FEN tokens, move bestMove, int* nodes) {
+move AIMove(FEN tokens, move bestMove, atomic_int* nodesVisited) {
     // Generate all possible legal moves
     uint64_t *BBoard = tokens->BBoard;
     bool whiteToMove = tokens->whiteToMove;
@@ -586,7 +585,7 @@ move AIMove(FEN tokens, move bestMove, int* nodes) {
         move m = (move) move_node->data;
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
-        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, INT_MIN+1, INT_MAX, nodes);
+        int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, INT_MIN+1, INT_MAX, nodesVisited);
 
         // If this is the best move, then store it
         if (currScore > bestScore) {
@@ -617,7 +616,7 @@ char *lichess(char *board_fen, char *move_string) {
     /// Do AI stuff here
     move bestMove = calloc(1, sizeof(struct move_info));
     time_t start = clock();
-    int nodesVisited = 0;
+    atomic_int nodesVisited = 0;
     AIMove(tokens, bestMove, &nodesVisited);
     time_t finish = clock();
 
@@ -656,7 +655,7 @@ int main(void) {
     char *move_string = malloc(sizeof(char) * 5);
 
     /// Input FEN String here
-    strcpy(board_fen, "8/k4R2/1p6/8/P3N1p1/5n2/1K6/8 b - - 0 1");  /// Input a FEN_string here!
+    strcpy(board_fen, "r1bqk2r/ppp2ppp/2np1n2/4p1B1/1bBPP3/2N2N2/PPP2PPP/R2QK2R b KQkq - 0 1");  /// Input a FEN_string here!
 
     // Call lichess and make AI move
     move_string = lichess(board_fen, move_string);
