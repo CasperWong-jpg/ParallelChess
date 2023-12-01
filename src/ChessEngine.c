@@ -190,8 +190,15 @@ uint64_t generateKnightMoves(enum enumSquare knight_index, uint64_t *BBoard, boo
  */
 uint64_t generateKingMoves(enum enumSquare king_index, uint64_t *BBoard, bool whiteToMove, uint64_t castling) {
     (void) castling;
-    // todo: Castling in another function?
+    /* Castling
+     * 1. Check if castling token allows queenside & kingside castling
+     *  - If yes, this means king and rook has not been moved yet
+     * 2. Obtain all pieces board
+     * 3. Check squares in between are free (ie. use magic number (1<<f1 | 1<<g1 etc.)
+     * 4. Add this move in make_move
+     */
 
+    // Normal moves
     uint64_t friendlyBoard = BBoard[whiteAll + !whiteToMove * colorOffset];
     uint64_t king = 1UL << king_index;
     uint64_t l1 = (king >> 1) & not_h_file;
@@ -596,65 +603,23 @@ move AIMove(FEN tokens, move bestMove) {
  * The meat of script, does anything and everything right now
  * @return An exit code (0 = successful exit)
  */
-char *lichess(char *board_fen, char *moveString) {
+char *lichess(char *board_fen, char *move_string) {
     // Initialize data tables
     initEvalTables();
 
     // Extract info from FEN string
     FEN tokens = extract_fen_tokens(board_fen);
 
-    /// Do AI stuff here;
+    /// Do AI stuff here
     move bestMove = calloc(1, sizeof(struct move_info));
-    AIMove(tokens, bestMove);
-
-    printf("Before AI move - ");
-    render_all(tokens->BBoard);
-    int score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
-    printf("Score: %d \n", score);
-
-    make_move(tokens->BBoard, bestMove);
-
-    printf("After AI move - ");
-    render_all(tokens->BBoard);
-    score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
-    printf("Score: %d \n", score);
-
-    enumSquare_to_string(moveString, bestMove->from);
-    enumSquare_to_string(&moveString[2], bestMove->to);
-    moveString[4] = '\0';
-
-    // Free pointers
-    free(bestMove);
-    free_tokens(tokens);
-    return moveString;
-}
-
-
-/**
- * The meat of script, does anything and everything right now
- * @return An exit code (0 = successful exit)
- */
-int main(void) {
-    // Initialize data tables
-    initEvalTables();
-
-    // Input FEN String
-    char *board_fen = malloc(sizeof(char) * 100);
-    strcpy(board_fen, "8/k4R2/1p6/8/P3N1p1/5n2/1K6/8 b - - 0 1");  /// Input a FEN_string here!
-
-    // Extract info from FEN string
-    FEN tokens = extract_fen_tokens(board_fen);
-
-    /// Do AI stuff here;
-    printf("Before AI move - ");
-    render_all(tokens->BBoard);
-    int score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
-    printf("Score: %d \n", score);
-
     time_t start = clock();
-    move bestMove = calloc(1, sizeof(struct move_info));
     AIMove(tokens, bestMove);
     time_t finish = clock();
+
+    printf("Before AI move - ");
+    render_all(tokens->BBoard);
+    int score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
+    printf("Score: %d \n", score);
 
     make_move(tokens->BBoard, bestMove);
 
@@ -664,9 +629,34 @@ int main(void) {
     printf("Score: %d \n", score);
     printf("Time elapsed: %f \n", (double) (finish - start) / CLOCKS_PER_SEC);
 
+    enumSquare_to_string(move_string, bestMove->from);
+    enumSquare_to_string(&move_string[2], bestMove->to);
+    move_string[4] = '\0';
+
     // Free pointers
     free(bestMove);
     free_tokens(tokens);
+    return move_string;
+}
+
+
+/**
+ * Wrapper for lichess function, useful for easy debugging in CLion
+ * Specify a FEN string in body of function
+ * @return An exit code (0 = successful exit)
+ */
+int main(void) {
+    char *board_fen = malloc(sizeof(char) * 100);
+    char *move_string = malloc(sizeof(char) * 5);
+
+    /// Input FEN String here
+    strcpy(board_fen, "8/k4R2/1p6/8/P3N1p1/5n2/1K6/8 b - - 0 1");  /// Input a FEN_string here!
+
+    // Call lichess and make AI move
+    move_string = lichess(board_fen, move_string);
+
+    // Free pointers
     free(board_fen);
+    free(move_string);
     return 0;
 }
