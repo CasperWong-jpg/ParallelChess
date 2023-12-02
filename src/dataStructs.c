@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "dataStructs.h"
+
 uint64_t not_a_file = 0xfefefefefefefefe;
 uint64_t not_ab_file = 0xfcfcfcfcfcfcfcfc;
 uint64_t not_h_file = 0x7f7f7f7f7f7f7f7f;
@@ -170,3 +172,6 @@ const int* eg_pesto_table[6] = {
         eg_queen_table,
         eg_king_table
 };
+
+int mg_table[numPieceTypes][64];
+int eg_table[numPieceTypes][64];

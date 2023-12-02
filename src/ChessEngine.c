@@ -469,7 +469,7 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
  * @param BBoard
  * @return
  */
-int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, atomic_int* nodesVisited) {
+int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, int* nodesVisited) {
     (*nodesVisited)++;
 
     // Get a "stand pat" score - need to stop searching without necessarily searching all available captures
@@ -514,7 +514,7 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
  * @return Best score
  * @cite https://www.chessprogramming.org/Negamax
  */
-int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, atomic_int* nodesVisited) {
+int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPassant, uint32_t depth, int alpha, int beta, int* nodesVisited) {
     (*nodesVisited)++;
 
     if (depth == 0) {
@@ -562,7 +562,7 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
  * @param bestMove Pointer to the best move
  * @return move, a pointer to a move_info struct
  */
-move AIMove(FEN tokens, move bestMove, atomic_int* nodesVisited) {
+move AIMove(FEN tokens, move bestMove, int* nodesVisited) {
     // Generate all possible legal moves
     uint64_t *BBoard = tokens->BBoard;
     bool whiteToMove = tokens->whiteToMove;
@@ -616,7 +616,7 @@ char *lichess(char *board_fen, char *move_string) {
     /// Do AI stuff here
     move bestMove = calloc(1, sizeof(struct move_info));
     time_t start = clock();
-    atomic_int nodesVisited = 0;
+    int nodesVisited = 0;
     AIMove(tokens, bestMove, &nodesVisited);
     time_t finish = clock();
 
