@@ -4,6 +4,8 @@
 
 #ifndef CHESS_BOARD_MANIPULATIONS_H
 #define CHESS_BOARD_MANIPULATIONS_H
+#include "dataStructs.h"
+#include "dev_tools.h"
 
 /**
  * Macro function to vertically flip a square

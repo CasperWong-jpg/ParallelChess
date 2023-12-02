@@ -4,8 +4,8 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include "dataStructs.h"
-#include "dev_tools.h"
+
+#include "board_manipulations.h"
 #include "lib/contracts.h"
 
 /**********************

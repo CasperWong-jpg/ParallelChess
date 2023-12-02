@@ -7,8 +7,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "dev_tools.h"
 #include "lib/contracts.h"
-#include "dataStructs.h"
 
 /**
  * HELPER FUNCTION LOCAL TO THIS FILE. USE FLIP(sq) IN board_manipulation.h

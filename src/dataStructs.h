@@ -76,12 +76,12 @@ typedef struct FEN_info *FEN;
 /**
  * Bit masks that determine whether pieces are in specific ranks / files
  */
-uint64_t not_a_file;
-uint64_t not_ab_file;
-uint64_t not_h_file;
-uint64_t not_hg_file;
+extern uint64_t not_a_file;
+extern uint64_t not_ab_file;
+extern uint64_t not_h_file;
+extern uint64_t not_hg_file;
 
-const int LS1Bindex64[64];  // Used for efficient bit-scanning
+extern const int LS1Bindex64[64];  // Used for efficient bit-scanning
 
 
 /**
@@ -111,28 +111,28 @@ typedef struct generic_get_move_struct *generic_get_move;
  * Evaluation heuristics using PeSTO – piece value and piece square tables
  * See https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
  */
-const int mg_value[whiteAll];
-const int eg_value[whiteAll];
-const int gamePhaseInc[whiteAll];
+extern const int mg_value[whiteAll];
+extern const int eg_value[whiteAll];
+extern const int gamePhaseInc[whiteAll];
 
 // The following piece square tables are built for black. Need to flip vertical for white
-const int mg_pawn_table[64];
-const int eg_pawn_table[64];
-const int mg_knight_table[64];
-const int eg_knight_table[64];
-const int mg_bishop_table[64];
-const int eg_bishop_table[64];
-const int mg_rook_table[64];
-const int eg_rook_table[64];
-const int mg_queen_table[64];
-const int eg_queen_table[64];
-const int mg_king_table[64];
-const int eg_king_table[64];
-const int* mg_pesto_table[whiteAll];
-const int* eg_pesto_table[whiteAll];
+extern const int mg_pawn_table[64];
+extern const int eg_pawn_table[64];
+extern const int mg_knight_table[64];
+extern const int eg_knight_table[64];
+extern const int mg_bishop_table[64];
+extern const int eg_bishop_table[64];
+extern const int mg_rook_table[64];
+extern const int eg_rook_table[64];
+extern const int mg_queen_table[64];
+extern const int eg_queen_table[64];
+extern const int mg_king_table[64];
+extern const int eg_king_table[64];
+extern const int* mg_pesto_table[whiteAll];
+extern const int* eg_pesto_table[whiteAll];
 
 // These need to be initialized in main program
-int mg_table[numPieceTypes][64];
-int eg_table[numPieceTypes][64];
+extern int mg_table[numPieceTypes][64];
+extern int eg_table[numPieceTypes][64];
 
 #endif //CHESS_DATASTRUCTS_H

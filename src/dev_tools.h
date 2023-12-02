@@ -4,7 +4,7 @@
 
 #ifndef CHESS_DEV_TOOLS_H
 #define CHESS_DEV_TOOLS_H
-
+#include "dataStructs.h"
 
 /************************
 DEBUGGING AND PRINT TOOLS
