@@ -3,10 +3,10 @@
 
 #include "dataStructs.h"
 
-uint64_t not_a_file = 0xfefefefefefefefe;
-uint64_t not_ab_file = 0xfcfcfcfcfcfcfcfc;
-uint64_t not_h_file = 0x7f7f7f7f7f7f7f7f;
-uint64_t not_hg_file = 0x3f3f3f3f3f3f3f3f;
+const uint64_t not_a_file = 0xfefefefefefefefe;
+const uint64_t not_ab_file = 0xfcfcfcfcfcfcfcfc;
+const uint64_t not_h_file = 0x7f7f7f7f7f7f7f7f;
+const uint64_t not_hg_file = 0x3f3f3f3f3f3f3f3f;
 
 const int LS1Bindex64[64] = {
     0, 47,  1, 56, 48, 27,  2, 60,
@@ -19,8 +19,8 @@ const int LS1Bindex64[64] = {
     13, 18,  8, 12,  7,  6,  5, 63
 };
 
-const int mg_value[6] = { 82, 337, 365, 477, 1025,  20000};
-const int eg_value[6] = { 94, 281, 297, 512,  936,  20000};
+const int mg_value[6] = { 82, 337, 365, 477, 1025, 20000};
+const int eg_value[6] = { 94, 281, 297, 512,  936, 20000};
 const int gamePhaseInc[6] = { 0, 1, 1, 2, 4, 0};
 
 const int mg_pawn_table[64] = {

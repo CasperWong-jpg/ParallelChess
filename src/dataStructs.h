@@ -76,10 +76,10 @@ typedef struct FEN_info *FEN;
 /**
  * Bit masks that determine whether pieces are in specific ranks / files
  */
-extern uint64_t not_a_file;
-extern uint64_t not_ab_file;
-extern uint64_t not_h_file;
-extern uint64_t not_hg_file;
+extern const uint64_t not_a_file;
+extern const uint64_t not_ab_file;
+extern const uint64_t not_h_file;
+extern const uint64_t not_hg_file;
 
 extern const int LS1Bindex64[64];  // Used for efficient bit-scanning
 
