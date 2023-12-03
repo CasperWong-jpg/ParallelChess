@@ -365,11 +365,13 @@ bool isInCheck(uint64_t *BBoard, bool whiteMoved) {
                 pieceMoves = (piece->move_gen_func_ptr.normal)(piece_index, BBoard, !whiteMoved);
             }
             if (pieceMoves & kingBoard) {  // Friendly king within enemy moves list, in check!
+                free_linked_list(piece_list);
                 return true;
             }
             pieceBoard &= pieceBoard - 1;
         }
     }
+    free_linked_list(piece_list);
     return false;  // King is not in moves list of any enemy piece, so is safe :)
 }
 

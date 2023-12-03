@@ -235,6 +235,7 @@ FEN extract_fen_tokens(char *fen_string) {
     ASSERT(fen_string != NULL);
 
     tokens->BBoard = fen2bit(board_fen);
+    free(board_fen);
     return tokens;
 }
 
