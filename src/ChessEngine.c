@@ -372,6 +372,7 @@ bool isInCheck(uint64_t *BBoard, bool whiteMoved) {
             pieceBoard &= pieceBoard - 1;
         }
     }
+    free_linked_list(piece_list);
     return false;  // King is not in moves list of any enemy piece, so is safe :)
 }
 
