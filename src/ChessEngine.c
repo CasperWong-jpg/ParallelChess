@@ -367,6 +367,7 @@ bool isInCheck(uint64_t *BBoard, bool whiteMoved) {
                 pieceMoves = (piece->move_gen_func_ptr.normal)(piece_index, BBoard, !whiteMoved);
             }
             if (pieceMoves & kingBoard) {  // Friendly king within enemy moves list, in check!
+                free_linked_list(piece_list);
                 return true;
             }
             pieceBoard &= pieceBoard - 1;
@@ -682,7 +683,7 @@ int main(void) {
     char *move_string = malloc(sizeof(char) * 5);
 
     /// Input FEN String here
-    strcpy(board_fen, "2r1kr2/1pp3p1/p1n1pbPp/2Nq3P/PP1Pp1Q1/2P5/5P2/R1B1K2R b Q - 3 25");  /// Input a FEN_string here!
+    strcpy(board_fen, "8/3k4/3P4/3K4/8/8/8/8 b - - 0 1");  /// Input a FEN_string here!
 
     // Call lichess and make AI move
     move_string = lichess(board_fen, move_string);
