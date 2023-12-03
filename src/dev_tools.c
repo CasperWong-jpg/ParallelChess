@@ -235,6 +235,7 @@ FEN extract_fen_tokens(char *fen_string) {
     ASSERT(fen_string != NULL);
 
     tokens->BBoard = fen2bit(board_fen);
+    free(board_fen);
     return tokens;
 }
 
@@ -245,12 +246,30 @@ void free_tokens(FEN tokens) {
 }
 
 
-void free_linked_list (node curr) {
-    while (curr != NULL) {
-        node next = curr->next;
-        free(curr->data);
-        free(curr);
-        curr = next;
+int find_length (node head) {
+    int cnt = 0;
+    for (node curr = head; curr != NULL; curr = curr->next) {
+        cnt++;
+    }
+    return cnt;
+}
+
+
+void convert_to_array(node head, void **array) {
+    int cnt = 0;
+    for (node curr = head; curr != NULL; curr = curr->next) {
+        array[cnt] = curr->data;
+        cnt++;
+    }
+}
+
+
+void free_linked_list (node head) {
+    while (head != NULL) {
+        node next = head->next;
+        free(head->data);
+        free(head);
+        head = next;
     }
 }
 

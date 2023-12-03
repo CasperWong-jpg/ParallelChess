@@ -67,19 +67,19 @@ uint64_t antiDiagMask(enum enumSquare sq) {
 
 uint64_t northRay(enum enumSquare sq) {return fileMask(sq) & (-2UL << sq);}
 
-uint64_t southRay(enum enumSquare sq) {return fileMask(sq) & (1UL << sq) - 1;}
+uint64_t southRay(enum enumSquare sq) {return fileMask(sq) & ((1UL << sq) - 1);}
 
 uint64_t eastRay(enum enumSquare sq) {return rankMask(sq) & (-2UL << sq);}
 
-uint64_t westRay(enum enumSquare sq) {return rankMask(sq) & (1UL << sq) - 1;}
+uint64_t westRay(enum enumSquare sq) {return rankMask(sq) & ((1UL << sq) - 1);}
 
 uint64_t northEastRay(enum enumSquare sq) {return diagonalMask(sq) & (-2UL << sq);}
 
-uint64_t southWestRay(enum enumSquare sq) {return diagonalMask(sq) & (1UL << sq) - 1;}
+uint64_t southWestRay(enum enumSquare sq) {return diagonalMask(sq) & ((1UL << sq) - 1);}
 
 uint64_t northWestRay(enum enumSquare sq) {return antiDiagMask(sq) & (-2UL << sq);}
 
-uint64_t southEastRay(enum enumSquare sq) {return antiDiagMask(sq) & (1UL << sq) - 1;}
+uint64_t southEastRay(enum enumSquare sq) {return antiDiagMask(sq) & ((1UL << sq) - 1);}
 
 
 /*********************

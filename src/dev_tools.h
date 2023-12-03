@@ -54,10 +54,25 @@ void free_tokens(FEN tokens);
 
 
 /**
- * Frees a linked list. See dataStructs.h for node data struct.
- * @param curr Head of a linked list
+ * Get number of nodes in linked list. See dataStructs.h for node data struct.
+ * @param head Head of linked list
  */
-void free_linked_list (node curr);
+int find_length(node head);
+
+
+/**
+ * Copy data from linked list to an already initialized array.
+ * NOTE: This performs a shallow copy. Freeing the linked list frees array data
+ * @param head Head of linked list
+ * @param array Array to copy void* data to, already initialized to correct size
+ */
+void convert_to_array(node head, void **array);
+
+
+/**
+ * Frees a linked list. See dataStructs.h for node data struct.
+ */
+void free_linked_list (node head);
 
 
 /**

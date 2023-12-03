@@ -1,5 +1,8 @@
-import sys
+import sys, os, select
 import ctypes
+import time
+import numpy as np
+import pandas as pd
 
 so_file = sys.path[0] + "/lichess_bot/engines/ChessEngine.so"
 ChessEngine = ctypes.CDLL(so_file)
@@ -28,13 +31,40 @@ test_fens = [  # (FEN string, best move)
     ("8/8/8/3k4/8/8/8/5RQK w - - 0 1", None)
 ]
 
+numThreads = [1, 2, 4, 8]
 
-def profile_engine():
-    for test_fen, best_move in test_fens:
-        res = ChessEngine.lichess(bytes(test_fen, 'utf-8'), "")
-        res = res.decode()
-        if best_move is not None and res != best_move:
-            raise Exception("Correctness failed")
+
+def profile_engine(numRuns=10):
+    # Create dataframes for logging
+    columns = [str(numThread) + "core(s)" for numThread in numThreads]
+    times = pd.DataFrame(np.zeros((len(test_fens), len(numThreads))), 
+                         columns=columns)
+    speedup = pd.DataFrame(np.zeros((len(test_fens), len(numThreads))), 
+                           columns=columns)
+    for col, OMPThreads in enumerate([str(numThread) for numThread in numThreads]):
+        for row, (test_fen, best_move) in enumerate(test_fens):
+            # Set number of threads (sequential vs parallel) and run AI
+            os.environ['OMP_NUM_THREADS'] = OMPThreads
+            for i in range(numRuns):
+                start = time.time()
+                res = ChessEngine.lichess(bytes(test_fen, 'utf-8'), "")
+                elapsed = time.time() - start
+
+                # Add times to dataframe
+                times.iloc[row, col] += elapsed
+
+                # Check correctness
+                res = res.decode()
+                if best_move is not None and res != best_move:
+                    raise Exception("Correctness failed")
+    # Process dataframes
+    times /= numRuns
+    speedup = 1 / times.div(times[columns[0]], axis=0)
+    times.to_csv("times.csv")
+    speedup.to_csv("speedup.csv")
+    print(times)
+    print(speedup)
+    print(f"Average speedup: {speedup.mean(axis=0)}")
 
 
 if __name__ == '__main__':
