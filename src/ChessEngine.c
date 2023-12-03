@@ -8,6 +8,8 @@
 #include <limits.h>
 #include <time.h>
 #include <stdatomic.h>
+#include <stdint.h>
+#include <omp.h>
 
 #include "lib/contracts.h"
 #include "dataStructs.h"
@@ -167,13 +169,13 @@ uint64_t generateQueenMoves(enum enumSquare queen_index, uint64_t *BBoard, bool 
 uint64_t generateKnightMoves(enum enumSquare knight_index, uint64_t *BBoard, bool whiteToMove) {
     uint64_t friendlyBoard = BBoard[whiteAll + !whiteToMove * colorOffset];
     uint64_t knight = 1UL << knight_index;
-    uint64_t l1 = (knight >> 1) & not_h_file;
-    uint64_t l2 = (knight >> 2) & not_hg_file;
-    uint64_t r1 = (knight << 1) & not_a_file;
-    uint64_t r2 = (knight << 2) & not_ab_file;
-    uint64_t h1 = l1 | r1;
-    uint64_t h2 = l2 | r2;
-    uint64_t moveSet = (h1<<16) | (h1>>16) | (h2<<8) | (h2>>8);
+    uint64_t left1 = (knight >> 1) & not_h_file;
+    uint64_t left2 = (knight >> 2) & not_hg_file;
+    uint64_t right1 = (knight << 1) & not_a_file;
+    uint64_t right2 = (knight << 2) & not_ab_file;
+    uint64_t hori1 = left1 | right1;
+    uint64_t hori2 = left2 | right2;
+    uint64_t moveSet = (hori1<<16) | (hori1>>16) | (hori2<<8) | (hori2>>8);
     return moveSet ^ (moveSet & friendlyBoard);
 }
 
@@ -202,8 +204,8 @@ uint64_t generateKingMoves(enum enumSquare king_index, uint64_t *BBoard, bool wh
     uint64_t king = 1UL << king_index;
     uint64_t l1 = (king >> 1) & not_h_file;
     uint64_t r1 = (king << 1) & not_a_file;
-    uint64_t h1 = king | l1 | r1;
-    uint64_t moveSet = king ^ (h1 | (h1<<8) | (h1>>8));
+    uint64_t hori1 = king | l1 | r1;
+    uint64_t moveSet = king ^ (hori1 | (hori1<<8) | (hori1>>8));
     return moveSet ^ (moveSet & friendlyBoard);
 }
 
@@ -383,7 +385,7 @@ bool isInCheck(uint64_t *BBoard, bool whiteMoved) {
  */
 bool checkMoveLegal(uint64_t *BBoard, bool whiteToMove, move m) {
     // Make move on a copy of BBoard, since we want to unmake the move
-    uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
+    uint64_t tmpBBoard[numPieceTypes];
     memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
 
     for (enum EPieceType i = 0; i < numPieceTypes; i++) {
@@ -394,7 +396,6 @@ bool checkMoveLegal(uint64_t *BBoard, bool whiteToMove, move m) {
     bool inCheck = isInCheck(tmpBBoard, whiteToMove);
 
     // Free the temporary bitboard
-    free(tmpBBoard);
     return !inCheck;
 }
 
@@ -483,7 +484,7 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
     // Generate all enemy moves
     uint64_t enemyBoard = BBoard[whiteAll + colorOffset * whiteToMove];
     node move_list = getMoves(BBoard, whiteToMove, castling, enPassant);
-    uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
+    uint64_t tmpBBoard[numPieceTypes];
     for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
         move m = (move) move_node->data;
         if (((1UL << m->to) & enemyBoard) != 0) {
@@ -501,7 +502,6 @@ int quiesce(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
             }
         }
     }
-    free(tmpBBoard);
     free_linked_list(move_list);
     return alpha;
 }
@@ -532,7 +532,7 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
         free_linked_list(move_list);
         return INT_MIN + 2;  // Default worst case is INT_MIN+1. This is still a move, which is better than nothing
     }
-    uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
+    uint64_t tmpBBoard[numPieceTypes];
     for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
         // Make move, evaluate it, (and unmake move if necessary)
         move m = (move) move_node->data;
@@ -550,7 +550,6 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
         }
     }
 
-    free(tmpBBoard);
     free_linked_list(move_list);
     return alpha;
 }
@@ -579,25 +578,37 @@ move AIMove(FEN tokens, move bestMove, int* nodesVisited) {
     int depth = DEPTH;
     ASSERT(depth > 0);
     int bestScore = INT_MIN + 1;
-    uint64_t *tmpBBoard = malloc(numPieceTypes * sizeof(uint64_t));
-    for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
+    uint64_t tmpBBoard[numPieceTypes];
+
+    // OpenMP parallel for requires simple addition for loop variable
+    // So we convert our linked list to array of moves (void* type)
+    int num_moves = find_length(move_list);
+    void **move_array = malloc(sizeof(void*) * num_moves);
+    convert_to_array(move_list, move_array);
+
+    #pragma omp parallel for private(tmpBBoard) schedule(dynamic)
+    for (int i = 0; i < num_moves; i++) {
         // Make move, evaluate it, (and unmake move if necessary)
-        move m = (move) move_node->data;
+        move m = (move) move_array[i];
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
         int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, INT_MIN+1, INT_MAX, nodesVisited);
 
         // If this is the best move, then store it
-        if (currScore > bestScore) {
-            bestScore = currScore;
-            bestMove->from = m->from;
-            bestMove->to = m->to;
-            bestMove->piece = m->piece;
+        #pragma omp critical
+        {
+            if (currScore > bestScore) {
+                bestScore = currScore;
+                bestMove->from = m->from;
+                bestMove->to = m->to;
+                bestMove->piece = m->piece;
+            }
         }
     }
+    #pragma omp taskwait
 
-    free(tmpBBoard);
     free_linked_list(move_list);
+    free(move_array);
     return bestMove;
 }
 
@@ -607,6 +618,19 @@ move AIMove(FEN tokens, move bestMove, int* nodesVisited) {
  * @return An exit code (0 = successful exit)
  */
 char *lichess(char *board_fen, char *move_string) {
+    // Set up number of workers
+    int num_threads = 0;
+    if (getenv("OMP_NUM_THREADS") != NULL) {  // atoi cannot read NULL
+        num_threads = atoi(getenv("OMP_NUM_THREADS"));
+    }
+    num_threads = 0 ? 1 : num_threads;  // atoi error returns 0
+    omp_set_num_threads(num_threads);
+    #pragma omp parallel 
+    {
+        #pragma omp single
+        printf("Running with %d thread(s)\n", omp_get_num_threads());
+    }
+
     // Initialize data tables
     initEvalTables();
 
@@ -631,8 +655,10 @@ char *lichess(char *board_fen, char *move_string) {
     render_all(tokens->BBoard);
     score = evaluateMaterial(tokens->BBoard, tokens->whiteToMove);
     printf("Score: %d \n", score);
-    printf("Time elapsed: %f \n", (double) (finish - start) / CLOCKS_PER_SEC);
+    double time_elapsed = (double) (finish - start) / (num_threads * CLOCKS_PER_SEC);
+    printf("Time elapsed: %f \n", time_elapsed);
     printf("Nodes visited: %d \n", nodesVisited);
+    printf("---------------------------------\n");
 
     enumSquare_to_string(move_string, bestMove->from);
     enumSquare_to_string(&move_string[2], bestMove->to);
@@ -655,7 +681,7 @@ int main(void) {
     char *move_string = malloc(sizeof(char) * 5);
 
     /// Input FEN String here
-    strcpy(board_fen, "r1bqk2r/ppp2ppp/2np1n2/4p1B1/1bBPP3/2N2N2/PPP2PPP/R2QK2R b KQkq - 0 1");  /// Input a FEN_string here!
+    strcpy(board_fen, "2r1kr2/1pp3p1/p1n1pbPp/2Nq3P/PP1Pp1Q1/2P5/5P2/R1B1K2R b Q - 3 25");  /// Input a FEN_string here!
 
     // Call lichess and make AI move
     move_string = lichess(board_fen, move_string);

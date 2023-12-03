@@ -1,5 +1,8 @@
-import sys
+import sys, os, select
 import ctypes
+import time
+import numpy as np
+import pandas as pd
 
 so_file = sys.path[0] + "/lichess_bot/engines/ChessEngine.so"
 ChessEngine = ctypes.CDLL(so_file)
@@ -17,7 +20,7 @@ test_fens = [  # (FEN string, best move)
     (" 2rqkr2/1ppbb1p1/p1n1pnPp/3p3P/PP1P4/1NPB1N2/5P2/R1BQK2R b Q - 1 20", None),
     ("2rqkr2/1ppN2p1/p1n1pbPp/7P/PP1Pp3/1NP5/5P2/R1BQK2R b Q - 0 23", "d8d7"),
     ("2r1kr2/1ppq2p1/p1n1pbPp/2N4P/PP1Pp3/2P5/5P2/R1BQK2R b Q - 1 24", "d7d5"),
-    ("2r1kr2/1pp3p1/p1n1pbPp/2Nq3P/PP1Pp1Q1/2P5/5P2/R1B1K2R b Q - 3 25", None),
+    # ("2r1kr2/1pp3p1/p1n1pbPp/2Nq3P/PP1Pp1Q1/2P5/5P2/R1B1K2R b Q - 3 25", None),
     ("2r1kr2/1pp3p1/p1n1QbPp/2Nq3P/PP1P4/2P1p3/5P2/R1B1K2R b Q - 0 26", "d5e6"),
 
     # ENDGAME
@@ -28,14 +31,26 @@ test_fens = [  # (FEN string, best move)
     ("8/8/8/3k4/8/8/8/5RQK w - - 0 1", None)
 ]
 
+def profile_engine(numThreads=2):
+    df = pd.DataFrame(np.zeros((len(test_fens), 3)), 
+                 columns=['Sequential Time', 'Parallel Time', 'Speedup'])
+    for row, (test_fen, best_move) in enumerate(test_fens):
+        for col, OMPThreads in enumerate(["1", str(numThreads)]):
+            # Set number of threads (sequential vs parallel) and run AI
+            os.environ['OMP_NUM_THREADS'] = OMPThreads
+            start = time.time()
+            res = ChessEngine.lichess(bytes(test_fen, 'utf-8'), "")
+            elapsed = time.time() - start
 
-def profile_engine():
-    for test_fen, best_move in test_fens:
-        res = ChessEngine.lichess(bytes(test_fen, 'utf-8'), "")
-        res = res.decode()
-        if best_move is not None and res != best_move:
-            raise Exception("Correctness failed")
+            # Add times to dataframe
+            df.iloc[row, col] = elapsed
 
+            # Check correctness
+            res = res.decode()
+            if best_move is not None and res != best_move:
+                raise Exception("Correctness failed")
+    df['Speedup'] = df['Sequential Time'] / df['Parallel Time']
+    print(df)
 
 if __name__ == '__main__':
     profile_engine()
