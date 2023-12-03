@@ -46,6 +46,7 @@ So far, we have seen the following improvements (time table on the left, speedup
 
 <details>
   <summary>Project Proposal</summary>
+  
   ## Background
   It is estimated there are between 10^111 and 10^123 chess board positions, including illegal moves. Without illegal moves, this number drops to 10^40. This is still quite a large number, so it is not possible for a chess engine to analyze all possible positions. For example, Stockfish 8, one of the most advanced chess engines, is only able to think up to 22 moves ahead in 1 second, and it takes exponentially longer to think another move ahead. Given that a typical chess game is 10 or 30 minutes, we cannot afford to spend more than seconds to think about each move.
   
