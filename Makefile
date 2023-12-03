@@ -4,7 +4,7 @@ HEADERS := src/*.h
 OUTPUTDIR := bin
 LICHESSDIR := lichess_bot/engines
 
-COMPILER := gcc
+COMPILER := clang
 CFLAGS := -std=c17 -fopenmp
 DEBUGFLAGS := -Wall -Wextra -Werror -Wno-cast-function-type -Wshadow -std=c99 
 DEBUGFLAGS += -pedantic -g -fwrapv
