@@ -534,10 +534,31 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
         free_linked_list(move_list);
         return INT_MIN + 2;  // Default worst case is INT_MIN+1. This is still a move, which is better than nothing
     }
+    
+    int num_moves = find_length(move_list);
+    void **move_array = malloc(sizeof(void*) * num_moves);
+    convert_to_array(move_list, move_array);
+
+    // Go down left branch
     uint64_t tmpBBoard[numPieceTypes];
-    for (node move_node = move_list; move_node != NULL; move_node = move_node->next) {
+    move m = (move) move_array[0];
+    memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
+    make_move(tmpBBoard, m);
+    int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha, nodesVisited);
+
+    // If this is the best move, then return this score
+    if (currScore >= beta) {
+        alpha = beta;  // Return beta
+    }
+    if (currScore > alpha) {
+        alpha = currScore;
+    }
+
+    // Parallelize the other branches
+    #pragma omp parallel for private(tmpBBoard) schedule(dynamic)
+    for (int i = 1; i < num_moves; i++) {
         // Make move, evaluate it, (and unmake move if necessary)
-        move m = (move) move_node->data;
+        move m = (move) move_array[i];
         memcpy(tmpBBoard, BBoard, numPieceTypes * sizeof(uint64_t));
         make_move(tmpBBoard, m);
         int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, -beta, -alpha, nodesVisited);
@@ -545,7 +566,6 @@ int negaMax(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t enPa
         // If this is the best move, then return this score
         if (currScore >= beta) {
             alpha = beta;  // Return beta
-            break;
         }
         if (currScore > alpha) {
             alpha = currScore;
@@ -588,7 +608,6 @@ move AIMove(FEN tokens, move bestMove, int* nodesVisited) {
     void **move_array = malloc(sizeof(void*) * num_moves);
     convert_to_array(move_list, move_array);
 
-    #pragma omp parallel for private(tmpBBoard) schedule(dynamic)
     for (int i = 0; i < num_moves; i++) {
         // Make move, evaluate it, (and unmake move if necessary)
         move m = (move) move_array[i];
@@ -597,17 +616,13 @@ move AIMove(FEN tokens, move bestMove, int* nodesVisited) {
         int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, INT_MIN+1, INT_MAX, nodesVisited);
 
         // If this is the best move, then store it
-        #pragma omp critical
-        {
             if (currScore > bestScore) {
                 bestScore = currScore;
                 bestMove->from = m->from;
                 bestMove->to = m->to;
                 bestMove->piece = m->piece;
             }
-        }
     }
-    #pragma omp taskwait
 
     free_linked_list(move_list);
     free(move_array);
