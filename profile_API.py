@@ -6,7 +6,9 @@ import pandas as pd
 
 so_file = sys.path[0] + "/lichess_bot/engines/ChessEngine.so"
 ChessEngine = ctypes.CDLL(so_file)
+# Lichess function
 ChessEngine.lichess.restype = ctypes.c_char_p
+
 test_fens = [  # (FEN string, best move)
     # OPENINGS
     ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", None),  # Starting board
@@ -67,5 +69,30 @@ def profile_engine(numRuns=10):
     print(f"Average speedup: {speedup.mean(axis=0)}")
 
 
+def get_nodes_visited(path, numRuns=10):
+    # Gather all nodes visited in a list
+    nodesVisited = []
+    with open(path + '.txt','r') as f:
+        for line in f:
+            if "Nodes visited: " in line:
+                nodesVisited.append(int(line.split("Nodes visited: ")[-1]))
+    assert(len(nodesVisited) == numRuns * len(test_fens) * len(numThreads))
+    
+    # Group by numThreads, then test_fen, then numRuns
+    columns = [str(numThread) + "core(s)" for numThread in numThreads]
+    df = pd.DataFrame(np.zeros((len(test_fens), len(numThreads))), 
+                                columns=columns)
+    for col in range(len(numThreads)):
+        for row in range(len(test_fens)):
+            for i in range(numRuns):
+                idx = i + row * numRuns + col * len(test_fens) * numRuns
+                df.iloc[row, col] += nodesVisited[idx]
+    df /= numRuns
+    print(df)
+    print(f"Average nodes visited: \n{df.mean(axis=0)}")
+    df.to_csv(path + '.csv')
+
+
 if __name__ == '__main__':
     profile_engine()
+    # get_nodes_visited("")  # Insert path here
