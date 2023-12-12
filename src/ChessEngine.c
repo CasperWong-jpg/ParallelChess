@@ -321,7 +321,7 @@ node get_pieces_struct(uint64_t castling, uint64_t enPassant, bool whiteToMove) 
                 break;
         }
 
-        piece_node->data = (void *) piece_list;  // Add data to list node
+        piece_node->data = (void*) piece_list;  // Add data to list node
         piece_node->next = NULL;
     }
 
@@ -450,7 +450,7 @@ node getMoves(uint64_t *BBoard, bool whiteToMove, uint64_t castling, uint64_t en
                         move_list->next = malloc(sizeof(struct Node));
                         move_list = move_list->next;
                     }
-                    move_list->data = (void *) m;
+                    move_list->data = (void*) m;
                     move_list->next = NULL;
                 }
                 else {
@@ -588,7 +588,25 @@ move AIMove(FEN tokens, move bestMove, int* nodesVisited) {
     void **move_array = malloc(sizeof(void*) * num_moves);
     convert_to_array(move_list, move_array);
 
-    #pragma omp parallel for private(tmpBBoard) schedule(dynamic)
+    // Create an array for each thread to store best score and move in
+    int num_threads;
+    #pragma omp parallel 
+    {
+        #pragma omp single
+        {
+            num_threads = omp_get_num_threads();
+        }
+    }
+    int bestScoreArray[num_threads];
+    int bestMoveIdxArray[num_threads];
+
+#pragma omp parallel
+    {
+    int id = omp_get_thread_num();
+    bestScoreArray[id] = bestScore;
+    bestMoveIdxArray[id] = 0;
+
+    #pragma omp for private(tmpBBoard) schedule(dynamic)
     for (int i = 0; i < num_moves; i++) {
         // Make move, evaluate it, (and unmake move if necessary)
         move m = (move) move_array[i];
@@ -597,18 +615,25 @@ move AIMove(FEN tokens, move bestMove, int* nodesVisited) {
         int currScore = -negaMax(tmpBBoard, !whiteToMove, castling, enPassant, depth-1, INT_MIN+1, INT_MAX, nodesVisited);
 
         // If this is the best move, then store it
-        #pragma omp critical
-        {
-            if (currScore > bestScore) {
-                bestScore = currScore;
-                bestMove->from = m->from;
-                bestMove->to = m->to;
-                bestMove->piece = m->piece;
-            }
+        if (currScore > bestScoreArray[id]) {
+            bestScoreArray[id] = currScore;
+            bestMoveIdxArray[id] = i;
         }
     }
-    #pragma omp taskwait
+    }
 
+    // Find the best score that each thread found and merge
+    for (int i = 0; i < num_threads; i++) {
+        if (bestScoreArray[i] > bestScore) {
+            bestScore = bestScoreArray[i];
+            int moveIdx = bestMoveIdxArray[i];
+            move m = (move) move_array[moveIdx];
+            bestMove->from = m->from;
+            bestMove->to = m->to;
+            bestMove->piece = m->piece;
+        }
+    }
+    
     free_linked_list(move_list);
     free(move_array);
     return bestMove;
@@ -683,7 +708,7 @@ int main(void) {
     char *move_string = malloc(sizeof(char) * 5);
 
     /// Input FEN String here
-    strcpy(board_fen, "8/3k4/3P4/3K4/8/8/8/8 b - - 0 1");  /// Input a FEN_string here!
+    strcpy(board_fen, "rnbqkbnr/ppp2ppp/4p3/1N1p4/3P1B2/8/PPP1PPPP/R2QKBNR w KQkq - 0 1");  /// Input a FEN_string here!
 
     // Call lichess and make AI move
     move_string = lichess(board_fen, move_string);
