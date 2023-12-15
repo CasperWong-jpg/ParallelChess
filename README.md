@@ -5,7 +5,7 @@ We are going to parallelize a C chess engine using OpenMP to find the best move 
 
 ## Final Report
 See Report PDF:
-[Parallel Chess Final Report.pdf](https://github.com/CasperWong-jpg/ParallelChess/files/13679614/Parallel.Chess.Final.Report.pdf)
+[Parallel Chess Final Report.pdf](https://github.com/CasperWong-jpg/ParallelChess/files/13679638/Parallel.Chess.Final.Report.pdf)
 
 <details>
   <summary>Project Milestone</summary>
