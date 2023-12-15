@@ -3,7 +3,11 @@ CMU 15618 Project | Casper Wong, Daniela Munoz
 ## Summary
 We are going to parallelize a C chess engine using OpenMP to find the best move for any given board position as fast as possible. We will also analyze the performance and tradeoffs to be made in different parallel implementations.
 
-<details open>
+## Final Report
+See Report PDF:
+[Parallel Chess Final Report.pdf](https://github.com/CasperWong-jpg/ParallelChess/files/13679614/Parallel.Chess.Final.Report.pdf)
+
+<details>
   <summary>Project Milestone</summary>
   
   ## Updated Schedule
